@@ -29,11 +29,30 @@
 
 \pagebreak
 
-\begin{hwkProblem}{1}{Parts} \label{hwk:p01}
+% 1a and 3a are written solutions, everything else is coding
+
+\begin{hwkProblem}{1}{Batch Least Squares Estimation \textit{(30 pts.)}} \label{hwk:p01}
+
+	Imagine there is a spacecraft flying in a circular geosynchronous orbit around the Earth. To an observer on the rotating Earth, the spacecraft location appears static. You do not know the exact semi-major axis, but you can estimate it using a range measurement taken from a radio on the ground.
+	\[
+		\rho = \sqrt{x^{2} + y^{2} + z^{2}}
+	\]
+	Assume you are positioned directly beneath the satellite such that range measurement can be reduced to the following form:
+	\[
+		\rho = \sqrt{z^{2}} = z
+	\]
+	For \textbf{50} consecutive nights, you go outside and point your radio antenna towards the spacecraft and collect 200 noisy range measurements. The radio antenna is not particularly precise, so it has continuous measurement noise properties \( \fn{\bm{\tilde{v}}}[t] \sim \fn{\mathcal{N}}[0, V] \) where \( V = \qty{100}{\m\squared} \). Use this information and the measurements provided in \mintinline{python}{HW5Measurements.npy}\footnote{The measurements provided are formatted as a \( N \times M \) array where \( N \) corresponds to the trial and \( M \) corresponds to the number of measurements per trial and the units are \textbf{meters}.} to answer the following questions:
 
 	\begin{enumerate}[label=\alph*.]
-		\item \label{hwk:p01a} Instructions
-		\item \label{hwk:p01b} Instructions
+		\item \label{hwk:p01a} Express the system in continuous time state-space form assuming a state of
+			\[
+				\bm{X} = \bvect{x, y, z, \dot{x}, \dot{y}, \dot{z}}^{T}
+			\]
+			and convert to a discrete time state-space model assuming \( \Delta t = \qty{10}{\s} \)
+		\item \label{hwk:p01b} Use batch least squares algorithm\footnote{Hint: When you need to take a matrix inverse for BLLS and subsequent algorithms, use \mintinline{python}{np.linalg.pinv} rather than \mintinline{python}{np.linalg.inv} to avoid singularities.} to estimate the spacecraft state from the first trial in \mintinline{python}{HW5Measurements.npy}. Plot the estimated position as a function of \( k = \left\{ 1, \dots, 200 \right\} \) measurements.
+		\item \label{hwk:p01c} Repeat the batch estimation process for all \textbf{50} trials included in \mintinline{python}{HW5Measurements.npy}, and plot the resulting state estimates as a function of \( k \) along side their \( \pm 3 \sigma \) error bounds\footnote{Recall that the diagonal elements of the state error covariance matrix yield \( \sigma_{i}^{2} \).}\footnote{The \mintinline{python}{matplotlib} function \mintinline{python}{plt.fill_between} can be useful for the \( \pm 3 \sigma \) bounds that center on the mean.}.
+		\item \label{hwk:p01d} Using all 50 trials, plot histograms for each state estimate in \( \vech{x} \) after \( k \in \left\{ 10, 50, 200 \right\} \) measurements. Include the sample mean and error covariance for each distribution as annotations\footnote{Use \mintinline{python}{np.nanmean} and \mintinline{python}{np.nanstd} over all values for a particular k.}. Do these values make sense? Why?
+		\item \label{hwk:p01e} Measure the average amount of time it takes to compute an estimate as a function of \( k \). Use Python's \mintinline{python}{time} library.
 	\end{enumerate}
 
 	\hwkSol{} \label{hwk:s01}
@@ -44,7 +63,48 @@
 
 	\hwkPart{} \label{hwk:s01b}
 
-	Answer
+	\begin{figure}[H] \label{fig:s01b}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01b.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+	
+	\hwkPart{} \label{hwk:s01c}
+
+	\begin{figure}[H] \label{fig:s01c}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01c.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\hwkPart{} \label{hwk:s01d}
+
+	\begin{figure}[H] \label{fig:s01d}
+		\begin{center}
+			\begin{subfigure}{0.45\textwidth} \label{fig:s01d1}
+				\includegraphics[width=\linewidth]{./outputs/figures/s01d1.png}
+				\caption{blah}
+			\end{subfigure}
+			\\
+			\begin{subfigure}{0.45\textwidth} \label{fig:s01d2}
+				\includegraphics[width=\linewidth]{./outputs/figures/s01d2.png}
+				\caption{blah}
+			\end{subfigure}
+			\hfill
+			\begin{subfigure}{0.45\textwidth} \label{fig:s01d3}
+				\includegraphics[width=\linewidth]{./outputs/figures/s01d3.png}
+				\caption{blah}
+			\end{subfigure}
+		\end{center}
+	\end{figure}
+
+	\inputminted[autogobble, firstline=2, firstnumber=1]{python}{./outputs/text/s01d.txt}
+
+	\hwkPart{} \label{hwk:s01e}
+
+	\inputminted[autogobble, firstline=2, firstnumber=1]{python}{./outputs/text/s01e.txt}
 
 \end{hwkProblem}
 
@@ -54,12 +114,12 @@
 
 	\hwkSol{} \label{hwk:s02}
 
-	\begin{figure}[H] \label{fig:s02}
-		\begin{center}
-			\includegraphics[width=0.95\textwidth]{./outputs/figures/s02.png}
-		\end{center}
-		\caption{Example}
-	\end{figure}
+	% \begin{figure}[H] \label{fig:s02}
+	% 	\begin{center}
+	% 		\includegraphics[width=0.95\textwidth]{./outputs/figures/s02.png}
+	% 	\end{center}
+	% 	\caption{Example}
+	% \end{figure}
 
 	\hwkCode{} \label{code:s02}
 
