@@ -3,8 +3,12 @@ import numpy as np
 
 
 def load_numpy_data(file_path):
-    Y_all = np.load(file_path)
-    return Y_all
+    import os
+
+    cur_dir = os.path.dirname(os.path.abspath(__file__)) + "/"
+    data = np.load(cur_dir + file_path, allow_pickle=True)
+    print(f"Loaded data from {file_path}")
+    return data
 
 
 ###############################################
