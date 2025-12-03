@@ -1,4 +1,0 @@
-
-    Averages of i.i.d. variables trend toward a normal distribution.
-    As you average more uniform distributions, the histogram looks more Gaussian and its spread decreases similar to 1/sqrt(N).
-    

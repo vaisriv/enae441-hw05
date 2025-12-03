@@ -1,4 +1,13 @@
+For each k ∈ {10, 50, 200}, the histograms show the distribution of the
+batch least-squares state estimates across the 50 trials.
 
-    Averages of i.i.d. variables trend toward a normal distribution.
-    As you average more uniform distributions, the histogram looks more Gaussian and its spread decreases similar to 1/sqrt(N).
-    
+As k increases, the histograms for ẑ₀ become narrower and more tightly
+clustered around a common mean. The sample variances of ẑ₀ decrease
+and approach the corresponding diagonal entries of the analytical
+covariance Pₖ = (Γₖᵀ R⁻¹ Γₖ)⁻¹, which is expected for a linear
+unbiased least-squares estimator driven by independent Gaussian noise.
+
+The estimates of ż̂₀ are centered close to zero (since the spacecraft
+is effectively stationary in the chosen frame), and their spread also
+shrinks with increasing k, reflecting the fact that longer time spans
+give more leverage to estimate the slope in the constant-velocity model.

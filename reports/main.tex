@@ -59,7 +59,57 @@
 
 	\hwkPart{} \label{hwk:s01a}
 
-	Answer
+	In matrix form:
+	\[
+		\fn{\bm{\dot{X}}}[t]=A_c \fn{\bm{X}}[t],
+	\]
+	with
+	\[
+		A_c=\left[\begin{array}{llllll}
+				0 & 0 & 0 & 1 & 0 & 0 \\
+				0 & 0 & 0 & 0 & 1 & 0 \\
+				0 & 0 & 0 & 0 & 0 & 1 \\
+				0 & 0 & 0 & 0 & 0 & 0 \\
+				0 & 0 & 0 & 0 & 0 & 0 \\
+				0 & 0 & 0 & 0 & 0 & 0
+		\end{array}\right]
+	\]
+
+	Measurement model:
+	\[
+		\fn{\rho}[t] = H \fn{\bm{X}}[t] + \fn{\bm{\tilde{v}}}[t], \quad \fn{\bm{\tilde{v}}}[t] \sim \fn{\mathcal{N}}[0, V],
+	\]
+	with
+	\[
+		H=\left[\begin{array}{llllll}
+				0 & 0 & 1 & 0 & 0 & 0
+		\end{array}\right], \quad V=\qty{100}{\m\squared}
+	\]
+
+	The discrete state transition is:
+	\[
+		\bm{X}_{k+1}=\bm{\Phi} \bm{X}_k, \quad \bm{\Phi}=e^{A_c \Delta t}
+	\]
+
+	\( A_{c} \) has the structure of a constant-velocity model:
+	\[
+		\bm{\Phi}=\left[\begin{array}{cc}
+				\mathcal{I}_{3 \times 3} & \Delta t \mathcal{I}_{3 \times 3} \\
+				0_{3 \times 3} & \mathcal{I}_{3 \times 3}
+				\end{array}\right]=\left[\begin{array}{cccccc}
+				1 & 0 & 0 & \Delta t & 0 & 0 \\
+				0 & 1 & 0 & 0 & \Delta t & 0 \\
+				0 & 0 & 1 & 0 & 0 & \Delta t \\
+				0 & 0 & 0 & 1 & 0 & 0 \\
+				0 & 0 & 0 & 0 & 1 & 0 \\
+				0 & 0 & 0 & 0 & 0 & 1
+		\end{array}\right]
+	\]
+
+	Thus, the measurement equation in discrete time is:
+	\[
+		\boxed{\rho_k=H \bm{X}_k+v_k, \quad v_k \sim \fn{\mathcal{N}}[0, V], \quad V=\qty{100}{\m\squared}}
+	\]
 
 	\hwkPart{} \label{hwk:s01b}
 
@@ -100,30 +150,131 @@
 		\end{center}
 	\end{figure}
 
-	\inputminted[autogobble, firstline=2, firstnumber=1]{python}{./outputs/text/s01d.txt}
+	\inputminted{python}{./outputs/text/s01d.txt}
 
 	\hwkPart{} \label{hwk:s01e}
 
-	\inputminted[autogobble, firstline=2, firstnumber=1]{python}{./outputs/text/s01e.txt}
+	\begin{figure}[H] \label{fig:s01e}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01e.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\hwkCode{} \label{code:s01}
+
+	See the \href{https://www.github.com/vaisriv/enae441-hw05/blob/main/src/hw05.py#L1}{Python code} for this problem.
 
 \end{hwkProblem}
 
-\begin{hwkProblem}{2}{Code} \label{hwk:p02}
+\begin{hwkProblem}{2}{Recursive Least Squares Estimation \textit{(30 pts.)}} \label{hwk:p02}
 
-	Instructions
+	\begin{enumerate}[label=\alph*.]
+		\item \label{hwk:p02a} Using the same dataset, implement the recursive least squares algorithm to estimate \( \vech{x} \). Use an initial estimate of:
+			\[
+				\vech{x}_{0} = \bvect{\qty{0}{\km}, \qty{0}{\km}, \qty{42e3}{\km}, \qty{0}{\km\per\s}, \qty{0}{\km\per\s}, \qty{0}{\km\per\s}}
+			\]
+			and a covariance of:
+			\[
+				P_{0} = \bvect{
+					50 \cdot \mathbb{I}_{3 \times 3} \unit{\km\squared} & \bm{0}_{3 \times 3} \\
+					\bm{0}_{3 \times 3} & 1 \cdot \mathbb{I}_{3 \times 3} \unit{\km\squared\per\s\squared}
+				}
+			\]
+			Plot the state estimate for the 50 trials as a function of \( k \).
+		\item \label{hwk:p02b} Plot the sample mean state estimate \( \mu_{k} \) across all trials and the \( \pm 3 \sigma \) error bounds around the estimate. Does this mirror the same plot in \hyperref[hwk:p01d]{Problem 1, Part D}? Why or why not?
+		\item \label{hwk:p02c} Measure/plot the average amount of time it takes to perform each update from \( k = \left\{ 1, \dots, 200 \right\} \) and compare against the batch least squares estimator. Explain any differences.
+	\end{enumerate}
 
 	\hwkSol{} \label{hwk:s02}
 
-	% \begin{figure}[H] \label{fig:s02}
-	% 	\begin{center}
-	% 		\includegraphics[width=0.95\textwidth]{./outputs/figures/s02.png}
-	% 	\end{center}
-	% 	\caption{Example}
-	% \end{figure}
+	\hwkPart{} \label{hwk:s02a}
+
+	\begin{figure}[H] \label{fig:s02a}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02a.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\hwkPart{} \label{hwk:s02b}
+
+	\begin{figure}[H] \label{fig:s02b}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02b.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\inputminted{python}{./outputs/text/s02b.txt}
+	
+	\hwkPart{} \label{hwk:s02c}
+
+	\begin{figure}[H] \label{fig:s02c}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02c.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\inputminted{python}{./outputs/text/s02c.txt}
 
 	\hwkCode{} \label{code:s02}
 
-	See the \href{https://www.github.com/vaisriv/enae441-hw05/blob/main/code/hw05.py}{Python code} for this assignment.
+	See the \href{https://www.github.com/vaisriv/enae441-hw05/blob/main/src/hw05.py#L1}{Python code} for this problem.
+
+\end{hwkProblem}
+
+\begin{hwkProblem}{3}{Kalman Filtering \textit{(40 pts.)}} \label{hwk:p03}
+
+	% Intructions
+
+	\hwkSol{} \label{hwk:s03}
+
+	\hwkPart{} \label{hwk:s03a}
+
+	Answer
+
+	\hwkPart{} \label{hwk:s03b}
+
+	\inputminted{python}{./outputs/text/s03b.txt}
+	
+	\hwkPart{} \label{hwk:s03c}
+
+	\begin{figure}[H] \label{fig:s03c}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03c.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\hwkPart{} \label{hwk:s03d}
+
+	\begin{figure}[H] \label{fig:s03d}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03d.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\hwkPart{} \label{hwk:s03e}
+
+	\inputminted{python}{./outputs/text/s03e.txt}
+
+	\hwkPart{} \label{hwk:s03f}
+
+	\begin{figure}[H] \label{fig:s03f}
+		\begin{center}
+			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03f.png}
+		\end{center}
+		\caption{blah}
+	\end{figure}
+
+	\inputminted{python}{./outputs/text/s03f.txt}
+
+	\hwkCode{} \label{code:s03}
+
+	See the \href{https://www.github.com/vaisriv/enae441-hw05/blob/main/src/hw05.py#L1}{Python code} for this problem.
 
 \end{hwkProblem}
 
