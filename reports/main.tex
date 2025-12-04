@@ -111,9 +111,8 @@
 
 	\begin{figure}[H] \label{fig:s01b}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01b.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s01b.png}
 		\end{center}
-		% \caption{BLS Estimate of S/C Range (Single Trial)}
 	\end{figure}
 	
 	\newpage
@@ -124,22 +123,21 @@
 		\begin{center}
 			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01c.png}
 		\end{center}
-		% \caption{BLS Estimates over All Trials with \( \pm 3 \sigma \) Bounds}
 	\end{figure}
 
 	\hwkPart{} \label{hwk:s01d}
 
 	\begin{figure}[H] \label{fig:s01d}
 		\begin{center}
-			\begin{subfigure}{0.45\textwidth} \label{fig:s01d1}
+			\begin{subfigure}{0.30\textwidth} \label{fig:s01d1}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d1.png}
 			\end{subfigure}
-			\\
-			\begin{subfigure}{0.45\textwidth} \label{fig:s01d2}
+			\hfill
+			\begin{subfigure}{0.30\textwidth} \label{fig:s01d2}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d2.png}
 			\end{subfigure}
 			\hfill
-			\begin{subfigure}{0.45\textwidth} \label{fig:s01d3}
+			\begin{subfigure}{0.30\textwidth} \label{fig:s01d3}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d3.png}
 			\end{subfigure}
 		\end{center}
@@ -151,7 +149,7 @@
 
 	\begin{figure}[H] \label{fig:s01e}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01e.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s01e.png}
 		\end{center}
 	\end{figure}
 
@@ -186,7 +184,7 @@
 
 	\begin{figure}[H] \label{fig:s02a}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02a.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s02a.png}
 		\end{center}
 	\end{figure}
 
@@ -196,7 +194,7 @@
 
 	\begin{figure}[H] \label{fig:s02b}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02b.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s02b.png}
 		\end{center}
 	\end{figure}
 
@@ -208,7 +206,7 @@
 
 	\begin{figure}[H] \label{fig:s02c}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02c.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s02c.png}
 		\end{center}
 	\end{figure}
 
@@ -270,7 +268,54 @@
 
 	\hwkPart{} \label{hwk:s03a}
 
-	Answer
+	In matrix form:
+	\[
+		\fn{\bm{\dot{X}}}[t]=A \fn{\bm{X}}[t] + C \fn{\bm{w}}[t],
+	\]
+	with
+	\[
+		A = \bvect{
+			\bm{0}_{3 \times 3} & \mathbb{I}_{3 \times 3} \\
+			\bm{0}_{3 \times 3} & \bm{0}_{3 \times 3}
+		}, \quad
+		C = \bvect{
+			\bm{0}_{3 \times 3} \\
+			\mathbb{I}_{3 \times 3}
+		}
+	\]
+	Measurement model:
+	\[
+		\fn{\bm{Y}}[t] = H \fn{\bm{x}}[t] + \fn{\bm{v}}[t], \quad \fn{\bm{v}}[t] \sim \fn{\mathcal{N}}[0, V],
+	\]
+	with
+	\[
+		H = \bvect{\bm{0}_{3 \times 3} & \mathbb{I}_{3 \times 3}}, \quad V = \num{e3} \mathbb{I}_{3 \times 3} \unit{\km\squared}
+	\]
+	The discrete state transition is:
+	\[
+		x_{k+1}=F x_k+w_k, \quad y_k=H x_k+v_k,
+	\]
+	with state transition matrix \( F \)
+	\[
+		F = e^{A \Delta t} = \bvect{
+			\mathbb{I}_{3 \times 3} & \Delta t \mathbb{I}_{3 \times 3} \\
+			\bm{0}_{3 \times 3} & \mathbb{I}_{3 \times 3}
+		}
+	\]
+	and discrete process noise covariance \( Q \).
+
+	Computing \( Q \):
+	\begin{align*}
+		Q &= \int_0^{\Delta t} e^{A \tau} C W C^T e^{A^T \tau} d \tau \\
+		  &= \num{e-5} \bvect{
+			  \frac{\Delta t^3}{3} \mathbb{I}_{3 \times 3} & \frac{\Delta t^2}{2} \mathbb{I}_{3 \times 3} \\
+			  \frac{\Delta t^2}{2} \mathbb{I}_{3 \times 3} & \Delta t \mathbb{I}_{3 \times 3}
+		  }
+	\end{align*}
+	Measurement noise covariance:
+	\[
+		\text{Measurement noise is instantaneous with covariance} \therefore R = V = \num{e3} \mathbb{I}_{3 \times 3} \unit{\km\squared}
+	\]
 
 	\hwkPart{} \label{hwk:s03b}
 
@@ -280,7 +325,7 @@
 
 	\begin{figure}[H] \label{fig:s03c}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03c.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s03c.png}
 		\end{center}
 	\end{figure}
 
@@ -288,7 +333,7 @@
 
 	\begin{figure}[H] \label{fig:s03d}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03d.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s03d.png}
 		\end{center}
 	\end{figure}
 
@@ -300,7 +345,7 @@
 
 	\begin{figure}[H] \label{fig:s03f}
 		\begin{center}
-			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03f.png}
+			\includegraphics[width=0.85\textwidth]{./outputs/figures/s03f.png}
 		\end{center}
 	\end{figure}
 

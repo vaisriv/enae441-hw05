@@ -1,2 +1,17 @@
-Write your answer here.
-Write your answer here.
+The pure prediction curves (μₖ⁻, Pₖ⁻) show the state evolution and
+uncertainty when only the process model and process noise are applied.
+Between measurements, the covariance Pₖ⁻ grows due to injected
+process noise Q at each step, reflecting increasing uncertainty about
+the spacecraft's position and velocity in the absence of new data.
+
+The measurement-updated curves (μₖ⁺, Pₖ⁺) show the effect of
+incorporating the noisy position measurements. At each update, the
+position components' covariance drops sharply relative to Pₖ⁻, often
+to values significantly below the measurement noise variance, because
+the filter fuses multiple measurements over time.
+
+Thus:
+- Pₖ⁻ typically increases between updates (model + process noise).
+- Pₖ⁺ is always less than or equal to Pₖ⁻ after each measurement.
+- μₖ⁺ tends to track the true trajectory more closely than μₖ⁻,
+  which drifts when the model is driven only by process noise.

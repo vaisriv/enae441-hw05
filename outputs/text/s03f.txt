@@ -1,2 +1,15 @@
-Write your answer here.
-Write your answer here.
+The residuals δyₖ = yₖ - H xₖ⁺ represent the difference between the
+actual measurements and the measurement predicted by the updated state.
+
+For a well-tuned linear Kalman filter with correctly modeled process and
+measurement noise, these residuals should be approximately zero-mean,
+uncorrelated in time, and have a variance somewhat smaller than the
+raw measurement noise variance (because the filter has already used
+each measurement to refine the state estimate).
+
+In this problem, the nominal measurement noise standard deviation is
+σₘₑₐₛ ≈ 31.62 [km], so a ±3σ band is about ±94.87 [km].
+Thus, most residuals should lie within this range, and there should be no
+obvious deterministic trend over time. Any strong bias or systematic
+trend in the residuals would suggest either a modeling error or a mismatch
+between the assumed initial state/covariance and the actual conditions.

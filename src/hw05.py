@@ -176,12 +176,126 @@ def run_RLS(file_path="data/HW5Measurements.npy", dt=DT, V=V_MEAS):
 
 
 ###############################################
+# KALMAN FILTER
+###############################################
+
+
+def run_KF(file_path="data/HW5Measurements.npy"):
+    raw = load_numpy_data(file_path)
+
+    y_meas = raw.item()["Y"] # shape (N, 3)
+    t_meas = raw.item()["t"]
+
+    n_steps = y_meas.shape[0]
+    dt = np.mean(np.diff(t_meas))
+
+    # State Model
+    I3 = np.eye(3)
+    Z3 = np.zeros((3, 3))
+
+    # State transition F
+    F = np.block([
+        [I3, dt * I3],
+        [Z3, I3]
+    ])  # 6x6
+
+    # Process noise covariance Q
+    q = 1e-5 # from W = q * I3
+    dt3 = dt**3 / 3.0
+    dt2 = dt**2 / 2.0
+    Q_pos = dt3 * I3
+    Q_cross = dt2 * I3
+    Q_vel = dt * I3
+    Q = q * np.block([
+        [Q_pos,   Q_cross],
+        [Q_cross, Q_vel  ]
+    ]) # 6x6
+
+    # Measurement matrix H and noise R
+    H = np.hstack((I3, Z3)) # 3x6
+    R = 1e3 * I3 # 3x3 (R=V)
+
+    # ICs
+    x0 = np.array([0.0, 0.0, 500.0, 0.01, 0.0, 0.01]) # km, km/s
+
+    P0 = np.zeros((6, 6))
+    P0[0:3, 0:3] = 50.0 * I3 # km^2
+    P0[3:6, 3:6] = 0.1 * I3 # km^2 / s^2
+
+    # Store Vals
+    x_pred = np.zeros((n_steps, 6)) # μ_k^- (prior / prediction)
+    P_pred = np.zeros((n_steps, 6, 6))
+    x_filt = np.zeros((n_steps, 6)) # μ_k^+ (posterior / corrected)
+    P_filt = np.zeros((n_steps, 6, 6))
+    residuals = np.zeros((n_steps, 3))
+    innovation = np.zeros((n_steps, 3))
+
+    # Timing
+    step_time = np.zeros(n_steps)
+
+    # Initialize
+    x_plus = x0.copy()
+    P_plus = P0.copy()
+
+    # Filter loop
+    for k in range(n_steps):
+        y_k = y_meas[k, :]
+
+        t_start = time.perf_counter()
+
+        # Predict
+        x_minus = F @ x_plus
+        P_minus = F @ P_plus @ F.T + Q
+
+        # Store prediction
+        x_pred[k, :] = x_minus
+        P_pred[k, :, :] = P_minus
+
+        # Update
+        S_k = H @ P_minus @ H.T + R # 3x3
+        K_k = P_minus @ H.T @ np.linalg.inv(S_k) # 6x3
+
+        y_pred = H @ x_minus
+        innov_k = y_k - y_pred # innovation using prediction
+        x_plus = x_minus + K_k @ innov_k
+        P_plus = (np.eye(6) - K_k @ H) @ P_minus
+
+        # Store corrected state
+        x_filt[k, :] = x_plus
+        P_filt[k, :, :] = P_plus
+
+        # Residual using μ_k^+
+        residuals[k, :] = y_k - H @ x_plus
+        innovation[k, :] = innov_k
+
+        t_end = time.perf_counter()
+        step_time[k] = t_end - t_start
+
+    results = {
+        "dt": dt,
+        "y_meas": y_meas,
+        "F": F,
+        "Q": Q,
+        "H": H,
+        "R": R,
+        "x_pred": x_pred,
+        "P_pred": P_pred,
+        "x_filt": x_filt,
+        "P_filt": P_filt,
+        "residuals_plus": residuals, # y_k - H μ_k^+
+        "innovation": innovation, # y_k - H μ_k^-
+        "step_time": step_time,
+    }
+    return results
+
+###############################################
 # CACHE
 ###############################################
 
 
 _RESULTS_BLLS = None
 _RESULTS_RLS = None
+_RESULTS_KF = None
 
 
 def _get_results_BLLS():
@@ -196,6 +310,13 @@ def _get_results_RLS():
     if _RESULTS_RLS is None:
         _RESULTS_RLS = run_RLS(file_path="./data/HW5Measurements-P1.npy", dt=DT, V=V_MEAS)
     return _RESULTS_RLS
+
+
+def _get_results_KF():
+    global _RESULTS_KF
+    if _RESULTS_KF is None:
+        _RESULTS_KF = run_KF(file_path="./data/HW5Measurements-P3.npy")
+    return _RESULTS_KF
 
 
 ###############################################
@@ -218,15 +339,15 @@ def plot_batch_least_squares_single_trial():
     n_trials, n_meas = measurements.shape
     k_vec = np.arange(1, n_meas + 1)
 
-    z_hat_1 = xhat_all[0, :, 0]
-    meas_1 = measurements[0, :]
+    z_hat_1 = xhat_all[0, :, 0]/1e3
+    meas_1 = measurements[0, :]/1e3
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(k_vec, z_hat_1, label=r"$\hat{z}_0$ (Batch LS estimate)")
     ax.scatter(k_vec, meas_1, s=10, alpha=0.4, label="Noisy Range measurements")
 
     ax.set_xlabel(r"Measurement Index $k$")
-    ax.set_ylabel("Range / Position [m]")
+    ax.set_ylabel("Range / Position [km]")
     ax.set_title("Batch LS Estimate of S/C Range (Single Trial)")
     ax.grid(True)
     ax.legend()
@@ -248,22 +369,22 @@ def plot_batch_least_squares_all_trials():
     mean_z0 = z0_all.mean(axis=0)
     sigma_z0 = np.sqrt(P_all[:, 0, 0])
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     for i in range(n_trials):
-        ax.plot(k_vec, z0_all[i, :], color="0.8", linewidth=0.5)
+        ax.plot(k_vec, z0_all[i, :]/1e3, color="0.8", linewidth=0.5)
 
     # mean estimate
-    ax.plot(k_vec, mean_z0, label=r"Mean $\mu_k$ across trials", linewidth=2)
+    ax.plot(k_vec, mean_z0/1e3, label=r"Mean $\mu_k$ across trials", linewidth=2)
 
     # +/- 3 sigma bounds
-    upper = mean_z0 + 3.0 * sigma_z0
-    lower = mean_z0 - 3.0 * sigma_z0
+    upper = mean_z0/1e3 + 3.0 * sigma_z0/1e3
+    lower = mean_z0/1e3 - 3.0 * sigma_z0/1e3
     ax.plot(k_vec, upper, "r--", label=r"$\pm 3\sigma$ bounds")
     ax.plot(k_vec, lower, "r--")
 
     ax.set_xlabel(r"Measurement Index $k$")
-    ax.set_ylabel("Range / Position [m]")
+    ax.set_ylabel("Range / Position [km]")
     ax.set_title(r"Batch LS Estimates Over All Trials with $\pm 3\sigma$ Bounds")
     ax.grid(True)
     ax.legend()
@@ -287,19 +408,19 @@ def plot_state_estimate_histograms():
         x_k = xhat_all[:, idx, :]
         P_k = P_all[idx, :, :]
 
-        fig, axes = plt.subplots(1, n_states)
+        fig, axes = plt.subplots(n_states, 1, figsize=(4, 8))
         if n_states == 1:
             axes = [axes]
 
         for s in range(n_states):
-            data = x_k[:, s]
+            data = x_k[:, s]/1e3
             mu_s = np.mean(data)
             var_s = np.var(data, ddof=1)
             sigma_s = np.sqrt(var_s)
 
             ax = axes[s]
             ax.hist(data, bins=10, density=True, alpha=0.7)
-            ax.set_xlabel("EV [m]")
+            ax.set_xlabel("EV [km]")
             ax.set_ylabel("Density")
             if s == 0:
                 ax.set_title(rf"$\hat{{z}}_0$ after $k={k}$")
@@ -308,7 +429,7 @@ def plot_state_estimate_histograms():
 
             # display sample mean and variance
             text = (
-                rf"$\hat\mu = {mu_s:.3e}$ [m]" + "\n" +
+                rf"$\hat\mu = {mu_s:.3e}$ [km]" + "\n" +
                 rf"$\hat\sigma^2 = {var_s:.2f}$" + "\n" +
                 rf"$P_{{{s+1},{s+1}}} = {P_k[s, s]:.2f}$"
             )
@@ -319,7 +440,7 @@ def plot_state_estimate_histograms():
                 bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
             )
 
-        fig.suptitle(f"Histograms of State Estimates after k={k} Measurements")
+        fig.suptitle(f"Histograms of State Estimates\nAfter k={k} Measurements")
         fig.tight_layout()
         figs.append(fig)
 
@@ -349,7 +470,7 @@ def plot_execution_time_vs_measurements():
     n_meas = avg_time_per_k.shape[0]
     k_vec = np.arange(1, n_meas + 1)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(k_vec[1:], avg_time_per_k[1:] * 1e6) # microseconds
 
     ax.set_xlabel(r"Number of Measurements Used ($k$)")
@@ -374,18 +495,18 @@ def plot_recursive_lease_squares():
     k_vec = np.arange(1, n_meas + 1)
 
     state_labels = [
-        r"$x_0$",
-        r"$y_0$",
-        r"$z_0$",
-        r"$\dot x_0$",
-        r"$\dot y_0$",
-        r"$\dot z_0$",
+        r"$x$ [km]",
+        r"$y$ [km]",
+        r"$z$ [km]",
+        r"$\dot x$ [km/s]",
+        r"$\dot y$ [km/s]",
+        r"$\dot z$ [km/s]",
     ]
 
     # only display z-states
     idzs = (2, 5)
-    # fig, axes = plt.subplots(3, 2, sharex=True)
-    fig, axes = plt.subplots(1, 2, sharex=True)
+    # fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True)
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharex=True)
     axes = axes.flatten()
 
     # for i in range(n_states):
@@ -419,18 +540,18 @@ def plot_and_describe_sample_mean():
     mean_states = xhat_all.mean(axis=0) # (n_meas, 6)
 
     state_labels = [
-        r"$x_0$",
-        r"$y_0$",
-        r"$z_0$",
-        r"$\dot x_0$",
-        r"$\dot y_0$",
-        r"$\dot z_0$",
+        r"$x_0$ [km]",
+        r"$y_0$ [km]",
+        r"$z_0$ [km]",
+        r"$\dot{x}_0$ [km/s]",
+        r"$\dot{y}_0$ [km/s]",
+        r"$\dot{z}_0$ [km/s]",
     ]
 
     # only display z-states
     idzs = (2, 5)
-    # fig, axes = plt.subplots(3, 2, sharex=True)
-    fig, axes = plt.subplots(1, 2, sharex=True)
+    # fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True)
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharex=True)
     axes = axes.flatten()
 
     # for i in range(n_states):
@@ -493,7 +614,7 @@ def plot_and_describe_time():
     n_meas = avg_time_blls.shape[0]
     k_vec = np.arange(1, n_meas + 1)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     # convert to microseconds
     ax.plot(k_vec, avg_time_blls * 1e6, label="Batch LS (per k)", linewidth=2)
@@ -534,35 +655,125 @@ def plot_and_describe_time():
 
 # REQUIRED --- Problem 3b
 def compute_final_x_and_P():
-    x_final = 0
-    P_final = 2
+    res = _get_results_KF()
+    x_filt = res["x_filt"]
+    P_filt = res["P_filt"]
+
+    x_final = x_filt[-1, :]
+    P_final = P_filt[-1, :, :]
     return x_final, P_final
 
-def print_final_x_and_P(x_final, P_final):
-    output = dedent(f"""
-        x_final = {x_final}
-        P_final = {P_final}
-    """).strip()
-
-    return output
 
 # REQUIRED --- Problem 3c
 def plot_pure_prediction():
-    fig = plt.figure()
+    res = _get_results_KF()
+    x_pred = res["x_pred"]
+    P_pred = res["P_pred"]
+    dt = res["dt"]
+
+    n_steps, n_states = x_pred.shape
+    t_vec = np.arange(n_steps) * dt
+
+    state_labels = [
+        r"$x$ [km]",
+        r"$y$ [km]",
+        r"$z$ [km]",
+        r"$\dot x$ [km/s]",
+        r"$\dot y$ [km/s]",
+        r"$\dot z$ [km/s]",
+    ]
+
+    fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True)
+    axes = axes.flatten()
+
+    for i in range(n_states):
+        ax = axes[i]
+        mu_minus = x_pred[:, i]
+        sigma_minus = np.sqrt(P_pred[:, i, i])
+
+        ax.plot(t_vec, mu_minus, label=r"$\hat{\mu}_k^-$")
+        ax.plot(t_vec, mu_minus + 3.0 * sigma_minus, "r--", label=r"$\pm 3\sigma$")
+        ax.plot(t_vec, mu_minus - 3.0 * sigma_minus, "r--")
+        ax.set_ylabel(state_labels[i])
+        ax.grid(True)
+
+        if i == 5:
+            ax.legend(loc="upper right")
+
+    for ax in axes[-2:]:
+        ax.set_xlabel("Time [s]")
+
+    fig.suptitle(r"Kalman Filter Pure Predictions")
+    fig.tight_layout()
+
     return fig
 
 
 # REQUIRED --- Problem 3d
 def plot_with_measurement_updates():
-    fig = plt.figure()
+    res = _get_results_KF()
+    x_filt = res["x_filt"]
+    P_filt = res["P_filt"]
+    dt = res["dt"]
+
+    n_steps, n_states = x_filt.shape
+    t_vec = np.arange(n_steps) * dt
+
+    state_labels = [
+        r"$x$ [km]",
+        r"$y$ [km]",
+        r"$z$ [km]",
+        r"$\dot x$ [km/s]",
+        r"$\dot y$ [km/s]",
+        r"$\dot z$ [km/s]",
+    ]
+
+    fig, axes = plt.subplots(2, 3, figsize=(8, 4), sharex=True)
+    axes = axes.flatten()
+
+    for i in range(n_states):
+        ax = axes[i]
+        mu_plus = x_filt[:, i]
+        sigma_plus = np.sqrt(P_filt[:, i, i])
+
+        ax.plot(t_vec, mu_plus, label=r"$\hat{\mu}_k^+$")
+        ax.plot(t_vec, mu_plus + 3.0 * sigma_plus, "r--", label=r"$\pm 3\sigma$")
+        ax.plot(t_vec, mu_plus - 3.0 * sigma_plus, "r--")
+        ax.set_ylabel(state_labels[i])
+        ax.grid(True)
+
+        if i == 5:
+            ax.legend(loc="upper right")
+
+    for ax in axes[-2:]:
+        ax.set_xlabel("Time [s]")
+
+    fig.suptitle(r"Kalman Filter Corrected Estimates")
+    fig.tight_layout()
+
     return fig
 
 
 # REQUIRED --- Problem 3e
 def describe_differences():
     description = dedent("""
-        Write your answer here.
-        Write your answer here.
+        The pure prediction curves (μₖ⁻, Pₖ⁻) show the state evolution and
+        uncertainty when only the process model and process noise are applied.
+        Between measurements, the covariance Pₖ⁻ grows due to injected
+        process noise Q at each step, reflecting increasing uncertainty about
+        the spacecraft's position and velocity in the absence of new data.
+
+        The measurement-updated curves (μₖ⁺, Pₖ⁺) show the effect of
+        incorporating the noisy position measurements. At each update, the
+        position components' covariance drops sharply relative to Pₖ⁻, often
+        to values significantly below the measurement noise variance, because
+        the filter fuses multiple measurements over time.
+
+        Thus:
+        - Pₖ⁻ typically increases between updates (model + process noise).
+        - Pₖ⁺ is always less than or equal to Pₖ⁻ after each measurement.
+        - μₖ⁺ tends to track the true trajectory more closely than μₖ⁻,
+          which drifts when the model is driven only by process noise.
     """).strip()
 
     return description
@@ -570,11 +781,45 @@ def describe_differences():
 
 # REQUIRED --- Problem 3f
 def plot_and_describe_residuals():
-    fig = plt.figure()
+    res = _get_results_KF()
+    residuals = res["residuals_plus"] # shape (N, 3)
+    dt = res["dt"]
+    n_steps = residuals.shape[0]
+    t_vec = np.arange(n_steps) * dt
 
-    description = dedent("""
-        Write your answer here.
-        Write your answer here.
+    fig, ax = plt.subplots(3, 1, figsize=(8, 4), sharex=True)
+    labels = [r"$\delta y_x$", r"$\delta y_y$", r"$\delta y_z$"]
+
+    for i in range(3):
+        ax[i].plot(t_vec, residuals[:, i])
+        ax[i].axhline(0.0, color="k", linewidth=0.8)
+        ax[i].set_ylabel(labels[i])
+        ax[i].grid(True)
+
+    ax[-1].set_xlabel("Time [s]")
+    fig.suptitle(r"Measurement Residuals: $\delta \mathbf{y}_k = \mathbf{y}_k - H\hat{\mu}_k^+$")
+    fig.tight_layout()
+
+    # qualitative interpretation
+    sigma_meas = np.sqrt(1e3)
+    three_sigma = 3 * sigma_meas
+
+    description = dedent(f"""
+        The residuals δyₖ = yₖ - H xₖ⁺ represent the difference between the
+        actual measurements and the measurement predicted by the updated state.
+
+        For a well-tuned linear Kalman filter with correctly modeled process and
+        measurement noise, these residuals should be approximately zero-mean,
+        uncorrelated in time, and have a variance somewhat smaller than the
+        raw measurement noise variance (because the filter has already used
+        each measurement to refine the state estimate).
+
+        In this problem, the nominal measurement noise standard deviation is
+        σₘₑₐₛ ≈ {sigma_meas:.2f} [km], so a ±3σ band is about ±{three_sigma:.2f} [km].
+        Thus, most residuals should lie within this range, and there should be no
+        obvious deterministic trend over time. Any strong bias or systematic
+        trend in the residuals would suggest either a modeling error or a mismatch
+        between the assumed initial state/covariance and the actual conditions.
     """).strip()
 
     return fig, description
@@ -620,7 +865,8 @@ def main():
     # 3b
     x_final, P_final = compute_final_x_and_P()
     with open("./outputs/text/s03b.txt", "w", encoding="utf-8") as f:
-        f.write(print_final_x_and_P(x_final, P_final))
+        f.write(f"Final filtered state estimate x_N^+ =\n{x_final}\n")
+        f.write(f"Final filtered covariance P_N^+ =\n{P_final}")
     # 3c
     plot_pure_prediction().savefig("./outputs/figures/s03c.png", dpi=300)
     # 3d
