@@ -74,7 +74,6 @@
 				0 & 0 & 0 & 0 & 0 & 0
 		\end{array}\right]
 	\]
-
 	Measurement model:
 	\[
 		\fn{\rho}[t] = H \fn{\bm{X}}[t] + \fn{\bm{\tilde{v}}}[t], \quad \fn{\bm{\tilde{v}}}[t] \sim \fn{\mathcal{N}}[0, V],
@@ -85,12 +84,10 @@
 				0 & 0 & 1 & 0 & 0 & 0
 		\end{array}\right], \quad V=\qty{100}{\m\squared}
 	\]
-
 	The discrete state transition is:
 	\[
 		\bm{X}_{k+1}=\bm{\Phi} \bm{X}_k, \quad \bm{\Phi}=e^{A_c \Delta t}
 	\]
-
 	\( A_{c} \) has the structure of a constant-velocity model:
 	\[
 		\bm{\Phi}=\left[\begin{array}{cc}
@@ -105,7 +102,6 @@
 				0 & 0 & 0 & 0 & 0 & 1
 		\end{array}\right]
 	\]
-
 	Thus, the measurement equation in discrete time is:
 	\[
 		\boxed{\rho_k=H \bm{X}_k+v_k, \quad v_k \sim \fn{\mathcal{N}}[0, V], \quad V=\qty{100}{\m\squared}}
@@ -115,18 +111,20 @@
 
 	\begin{figure}[H] \label{fig:s01b}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01b.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01b.png}
 		\end{center}
-		\caption{blah}
+		% \caption{BLS Estimate of S/C Range (Single Trial)}
 	\end{figure}
 	
+	\newpage
+
 	\hwkPart{} \label{hwk:s01c}
 
 	\begin{figure}[H] \label{fig:s01c}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01c.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01c.png}
 		\end{center}
-		\caption{blah}
+		% \caption{BLS Estimates over All Trials with \( \pm 3 \sigma \) Bounds}
 	\end{figure}
 
 	\hwkPart{} \label{hwk:s01d}
@@ -135,17 +133,14 @@
 		\begin{center}
 			\begin{subfigure}{0.45\textwidth} \label{fig:s01d1}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d1.png}
-				\caption{blah}
 			\end{subfigure}
 			\\
 			\begin{subfigure}{0.45\textwidth} \label{fig:s01d2}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d2.png}
-				\caption{blah}
 			\end{subfigure}
 			\hfill
 			\begin{subfigure}{0.45\textwidth} \label{fig:s01d3}
 				\includegraphics[width=\linewidth]{./outputs/figures/s01d3.png}
-				\caption{blah}
 			\end{subfigure}
 		\end{center}
 	\end{figure}
@@ -156,9 +151,8 @@
 
 	\begin{figure}[H] \label{fig:s01e}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s01e.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s01e.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\hwkCode{} \label{code:s01}
@@ -192,29 +186,30 @@
 
 	\begin{figure}[H] \label{fig:s02a}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02a.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02a.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
+
+	\newpage
 
 	\hwkPart{} \label{hwk:s02b}
 
 	\begin{figure}[H] \label{fig:s02b}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02b.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02b.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\inputminted{python}{./outputs/text/s02b.txt}
+
+	\newpage
 	
 	\hwkPart{} \label{hwk:s02c}
 
 	\begin{figure}[H] \label{fig:s02c}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s02c.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s02c.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\inputminted{python}{./outputs/text/s02c.txt}
@@ -227,7 +222,49 @@
 
 \begin{hwkProblem}{3}{Kalman Filtering \textit{(40 pts.)}} \label{hwk:p03}
 
-	% Intructions
+	Imagine you are floating in interplanetary space and observing a spacecraft traveling at some undetermined position awway from you. The spacecraft has the state \( \bm{x} = \bvect{x, y, z, \dot{x}, \dot{y}, \dot{z}}^{T} \). The spacecraft is not under the influence of gravity, rather its motion is only driven by its current velocity vector and some gaussian white noise acting on the acceleration terms --- i.e.
+	\begin{gather}
+		\fn{\ddot{x}}[t] = \fn{w_{1}}[t] \\
+		\fn{\ddot{y}}[t] = \fn{w_{2}}[t] \\
+		\fn{\ddot{z}}[t] = \fn{w_{3}}[t]
+	\end{gather}
+	where
+	\[
+		\fn{\bm{w}}[t] \sim \fn{\mathcal{N}}[\bm{0}, W], \quad W = \bvect{\num{e-5} & 0 & 0 \\ 0 & \num{e-5} & 0 \\ 0 & 0 & \num{e-5}} \unit{\km\squared\per\s\tothe{4}}
+	\]
+	You have a magical sensor that can produce noisy measurements of the spacecraft's current position, but it is unable to resolve any information about its velocity --- i.e.
+	\[
+		\fn{\bm{Y}}[t] = \bvect{x, y, z}^{T} + \fn{\bm{v}}[t], \quad \fn{\bm{v}}[t] \sim \fn{\mathcal{N}}[0, V]
+	\]
+	where the noise associated with the sensor is characterized by the continuous time process noise matrix
+	\[
+		V = \bvect{\num{e3} & 0 & 0 \\ 0 & \num{e3} & 0 \\ 0 & 0 & \num{e3}} \unit{\km\squared}
+	\]
+	Using your expert insight, you have a rough order of magnitude estimate for the spacecraft's initial state as
+	\[
+		\vech{x}_{0} = \bvect{\qty{0}{\km}, \qty{0}{\km}, \qty{500}{\km}, \qty{0.01}{\km\per\s}, \qty{0}{\km\per\s}, \qty{0.01}{\km\per\s}}
+	\]
+	and a covariance of
+	\[
+		P_{0} = \bvect{
+			50 \cdot \mathbb{I}_{3 \times 3} \unit{\km\squared} & \bm{0}_{3 \times 3} \\
+			\bm{0}_{3 \times 3} & 0.1 \cdot \mathbb{I}_{3 \times 3} \unit{\km\squared\per\s\squared}
+		}
+	\]
+	Using this information, answer the following questions:
+
+	\begin{enumerate}[label=\alph*.]
+		\item \label{hwk:p03a} Express this system in a discrete time state-space model. Specify \( A, C, F, H, Q, \text{ and } R \).
+		\item \label{hwk:p03b} Implement a Kalman filter to estimate the position and velocity of the spacecraft using measurements provided in \mintinline{python}{HW5Measurements-P3.npy}. Report your best estimate of the state at the final time-step and its associated error covariance matrix.
+		\item \label{hwk:p03c} Plot the pure prediction estimates of the state and \( \pm 3 \sigma \) error bounds over time --- i.e. \( \vech{\mu}_{k}^{-} \) and \( P_{k}^{-} \).
+		\item \label{hwk:p03d} Plot the measurement corrected estimates of the state and \( \pm 3 \sigma \) error bounds as a function of time --- i.e. \( \vech{\mu}_{k}^{+} \) and \( P_{k}^{+} \).
+		\item \label{hwk:p03e} Explain the differences between the plots of \( \left(\vech{\mu}_{k}^{-}, P_{k}^{-}\right) \) and \( \left(\vech{\mu}_{k}^{+}, P_{k}^{+}\right) \).
+		\item \label{hwk:p03f} Using the history of \( \vech{\mu}_{k}^{+} \), plot the measurement residuals over time
+			\[
+				\delta \bm{y} = \bm{y}_{k} - H_{k} \vech{\mu}_{k}^{+}
+			\]
+			Do these match expectation?
+	\end{enumerate}
 
 	\hwkSol{} \label{hwk:s03}
 
@@ -243,18 +280,16 @@
 
 	\begin{figure}[H] \label{fig:s03c}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03c.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03c.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\hwkPart{} \label{hwk:s03d}
 
 	\begin{figure}[H] \label{fig:s03d}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03d.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03d.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\hwkPart{} \label{hwk:s03e}
@@ -265,9 +300,8 @@
 
 	\begin{figure}[H] \label{fig:s03f}
 		\begin{center}
-			\includegraphics[width=0.45\textwidth]{./outputs/figures/s03f.png}
+			\includegraphics[width=0.65\textwidth]{./outputs/figures/s03f.png}
 		\end{center}
-		\caption{blah}
 	\end{figure}
 
 	\inputminted{python}{./outputs/text/s03f.txt}

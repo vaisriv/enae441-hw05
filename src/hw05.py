@@ -31,16 +31,16 @@ def _coerce_measurement_array(data):
     arr = np.array(data)
 
     if arr.ndim == 2:
-        # Already (n_trials, n_meas)
+        # already (n_trials, n_meas)
         return arr
 
     if arr.ndim == 1 and isinstance(arr[0], np.ndarray):
-        # Likely an object array of per-trial arrays
+        # per-trial arrays
         return np.vstack(arr)
 
-    # Fallback: try to interpret as 2D
     if arr.ndim == 1:
-        return arr[None, :]  # single trial
+        # single trial
+        return arr[None, :]
 
     raise ValueError(f"Unexpected measurement data shape: {arr.shape}")
 
@@ -73,8 +73,8 @@ def run_BLLS(file_path="./data/HW5Measurements.npy", dt=DT, V=V_MEAS):
             Gamma_k = Gamma_full[:k, :]
             y_k = y_trial[:k]
 
-            start = time.perf_counter()
             # Batch LS: x_hat = (Gamma^T Gamma)^(-1) Gamma^T y
+            start = time.perf_counter()
             GtG = Gamma_k.T @ Gamma_k
             x_hat = np.linalg.pinv(Gamma_k) @ y_k
             end = time.perf_counter()
@@ -102,21 +102,100 @@ def run_BLLS(file_path="./data/HW5Measurements.npy", dt=DT, V=V_MEAS):
     return results
 
 
-# simple lazy cache
-_RESULTS_BLLS_P1 = None
-_RESULTS_BLLS_P3 = None
+###############################################
+# RECURSIVE LEAST SQUARES
+###############################################
 
-def _get_results_BLLS_P1():
-    global _RESULTS_BLLS_P1
-    if _RESULTS_BLLS_P1 is None:
-        _RESULTS_BLLS_P1 = run_BLLS(file_path="./data/HW5Measurements-P1.npy", dt=DT, V=V_MEAS)
-    return _RESULTS_BLLS_P1
 
-def _get_results_BLLS_P3():
-    global _RESULTS_BLLS_P3
-    if _RESULTS_BLLS_P3 is None:
-        _RESULTS_BLLS_P3 = run_BLLS(file_path="./data/HW5Measurements-P1.npy", dt=DT, V=V_MEAS)
-    return _RESULTS_BLLS_P3
+def _build_rls_design_vector(k, dt):
+    t_k = (k - 1) * dt
+    w = np.array([0.0, 0.0, 1.0, 0.0, 0.0, t_k], dtype=float)
+    return w
+
+
+def run_RLS(file_path="data/HW5Measurements.npy", dt=DT, V=V_MEAS):
+    raw = load_numpy_data(file_path)
+    measurements = _coerce_measurement_array(raw) # shape (n_trials, n_meas)
+
+    n_trials, n_meas = measurements.shape
+    w_k = _build_rls_design_vector(n_meas, dt) # (6,)
+
+    # initial state
+    x0 = np.array([0.0, 0.0, 42e3, 0.0, 0.0, 0.0], dtype=float)
+
+    # initial covariance
+    P0 = np.zeros((6, 6), dtype=float)
+    P0[:3, :3] = 50.0 * np.eye(3)
+    P0[3:, 3:] = 1.0 * np.eye(3)
+
+    # xhat_all[trial, k-1, :] = [0, 0, z0_hat, 0, 0, zdot0_hat] using first k measurements
+    xhat_all = np.zeros((n_trials, n_meas, 6))
+    # covariance is the same across trials for a given k, so store per k
+    P_all = np.zeros((n_meas, 6, 6))
+    # timing per k (averaged over trials)
+    avg_time_per_update = np.zeros(n_meas)
+    counts_per_k = np.zeros(n_meas, dtype=int)
+
+    for trial in range(n_trials):
+        x_hat = x0.copy()
+        P = P0.copy()
+
+        for k in range(1, n_meas + 1):
+            idx = k - 1
+            z_meas = measurements[trial, idx]
+
+            # RLS update
+            start = time.perf_counter()
+            S_k = float(w_k @ (P @ w_k) + V)
+            K_k = (P @ w_k) / S_k
+            innov = z_meas - w_k @ x_hat
+            x_hat = x_hat + K_k * innov
+            P = (np.eye(6) - np.outer(K_k, w_k)) @ P
+            end = time.perf_counter()
+
+            xhat_all[trial, idx, :] = x_hat
+
+            # analytical covariance (same for all trials, so only compute once)
+            if trial == 0:
+                P_all[idx, :, :] = P
+
+            avg_time_per_update[idx] += (end - start)
+            counts_per_k[idx] += 1
+
+    avg_time_per_update /= counts_per_k
+
+    results = {
+        "dt": dt,
+        "V": V,
+        "measurements": measurements,
+        "xhat_all": xhat_all, # shape (n_trials, n_meas, 2)
+        "P_all": P_all, # shape (n_meas, 2, 2)
+        "avg_time_per_update": avg_time_per_update,
+    }
+    return results
+
+
+###############################################
+# CACHE
+###############################################
+
+
+_RESULTS_BLLS = None
+_RESULTS_RLS = None
+
+
+def _get_results_BLLS():
+    global _RESULTS_BLLS
+    if _RESULTS_BLLS is None:
+        _RESULTS_BLLS = run_BLLS(file_path="./data/HW5Measurements-P1.npy", dt=DT, V=V_MEAS)
+    return _RESULTS_BLLS
+
+
+def _get_results_RLS():
+    global _RESULTS_RLS
+    if _RESULTS_RLS is None:
+        _RESULTS_RLS = run_RLS(file_path="./data/HW5Measurements-P1.npy", dt=DT, V=V_MEAS)
+    return _RESULTS_RLS
 
 
 ###############################################
@@ -132,7 +211,7 @@ def _get_results_BLLS_P3():
 
 # REQUIRED --- 1b
 def plot_batch_least_squares_single_trial():
-    res = _get_results_BLLS_P1()
+    res = _get_results_BLLS()
     measurements = res["measurements"]
     xhat_all = res["xhat_all"]
 
@@ -157,7 +236,7 @@ def plot_batch_least_squares_single_trial():
 
 # REQUIRED --- 1c
 def plot_batch_least_squares_all_trials():
-    res = _get_results_BLLS_P1()
+    res = _get_results_BLLS()
     xhat_all = res["xhat_all"]
     P_all = res["P_all"]
 
@@ -175,7 +254,7 @@ def plot_batch_least_squares_all_trials():
         ax.plot(k_vec, z0_all[i, :], color="0.8", linewidth=0.5)
 
     # mean estimate
-    ax.plot(k_vec, mean_z0, label=r"Mean $\hat{z}_0$ across trials", linewidth=2)
+    ax.plot(k_vec, mean_z0, label=r"Mean $\mu_k$ across trials", linewidth=2)
 
     # +/- 3 sigma bounds
     upper = mean_z0 + 3.0 * sigma_z0
@@ -194,7 +273,7 @@ def plot_batch_least_squares_all_trials():
 
 # REQUIRED --- 1d
 def plot_state_estimate_histograms():
-    res = _get_results_BLLS_P1()
+    res = _get_results_BLLS()
     xhat_all = res["xhat_all"] # (n_trials, n_meas, 2)
     P_all = res["P_all"]
 
@@ -220,7 +299,7 @@ def plot_state_estimate_histograms():
 
             ax = axes[s]
             ax.hist(data, bins=10, density=True, alpha=0.7)
-            ax.set_xlabel("Estimate Value")
+            ax.set_xlabel("EV [m]")
             ax.set_ylabel("Density")
             if s == 0:
                 ax.set_title(rf"$\hat{{z}}_0$ after $k={k}$")
@@ -229,7 +308,7 @@ def plot_state_estimate_histograms():
 
             # display sample mean and variance
             text = (
-                rf"$\hat\mu = {mu_s:.2f}$" + "\n" +
+                rf"$\hat\mu = {mu_s:.3e}$ [m]" + "\n" +
                 rf"$\hat\sigma^2 = {var_s:.2f}$" + "\n" +
                 rf"$P_{{{s+1},{s+1}}} = {P_k[s, s]:.2f}$"
             )
@@ -240,7 +319,7 @@ def plot_state_estimate_histograms():
                 bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
             )
 
-        fig.suptitle(f"Histograms of state estimates after k={k} measurements")
+        fig.suptitle(f"Histograms of State Estimates after k={k} Measurements")
         fig.tight_layout()
         figs.append(fig)
 
@@ -265,7 +344,7 @@ def plot_state_estimate_histograms():
 
 # REQUIRED --- 1e
 def plot_execution_time_vs_measurements():
-    res = _get_results_BLLS_P1()
+    res = _get_results_BLLS()
     avg_time_per_k = res["avg_time_per_k"] # seconds
     n_meas = avg_time_per_k.shape[0]
     k_vec = np.arange(1, n_meas + 1)
@@ -288,17 +367,114 @@ def plot_execution_time_vs_measurements():
 
 # REQUIRED --- Problem 2a
 def plot_recursive_lease_squares():
-    fig = plt.figure()
+    res = _get_results_RLS()
+    xhat_all = res["xhat_all"] # (n_trials, n_meas, 6)
+    n_trials, n_meas, n_states = xhat_all.shape
+
+    k_vec = np.arange(1, n_meas + 1)
+
+    state_labels = [
+        r"$x_0$",
+        r"$y_0$",
+        r"$z_0$",
+        r"$\dot x_0$",
+        r"$\dot y_0$",
+        r"$\dot z_0$",
+    ]
+
+    # only display z-states
+    idzs = (2, 5)
+    # fig, axes = plt.subplots(3, 2, sharex=True)
+    fig, axes = plt.subplots(1, 2, sharex=True)
+    axes = axes.flatten()
+
+    # for i in range(n_states):
+    for i in range(2):
+        idz = idzs[i]
+        ax = axes[i]
+        for trial in range(n_trials):
+            ax.plot(k_vec, xhat_all[trial, :, idz], color="tab:blue")
+        ax.set_ylabel(state_labels[idz])
+        ax.grid(True)
+
+    for ax in axes[-2:]:
+        ax.set_xlabel(r"Measurement Index $k$")
+
+    fig.suptitle(r"Recursive Least Squares State Estimates vs Measurement Index $k$")
+    fig.tight_layout()
+
     return fig
 
 
 # REQUIRED --- Problem 2b
 def plot_and_describe_sample_mean():
-    fig = plt.figure()
+    res = _get_results_RLS()
+    xhat_all = res["xhat_all"] # (n_trials, n_meas, 6)
+    P_all = res["P_all"] # (n_meas, 6, 6)
+
+    n_trials, n_meas, n_states = xhat_all.shape
+    k_vec = np.arange(1, n_meas + 1)
+
+    # sample mean across trials
+    mean_states = xhat_all.mean(axis=0) # (n_meas, 6)
+
+    state_labels = [
+        r"$x_0$",
+        r"$y_0$",
+        r"$z_0$",
+        r"$\dot x_0$",
+        r"$\dot y_0$",
+        r"$\dot z_0$",
+    ]
+
+    # only display z-states
+    idzs = (2, 5)
+    # fig, axes = plt.subplots(3, 2, sharex=True)
+    fig, axes = plt.subplots(1, 2, sharex=True)
+    axes = axes.flatten()
+
+    # for i in range(n_states):
+    for i in range(2):
+        idz = idzs[i]
+        ax = axes[i]
+        mu_i = mean_states[:, idz]
+        sigma_i = np.sqrt(P_all[:, idz, idz])
+
+        ax.plot(k_vec, mu_i, label=r"Mean $\mu_k$ across trials", linewidth=2.5)
+        ax.plot(k_vec, mu_i + 3.0 * sigma_i, "r--", label=r"$\mu_k \pm 3\sigma$")
+        ax.plot(k_vec, mu_i - 3.0 * sigma_i, "r--")
+
+        for trial in range(n_trials):
+            ax.plot(k_vec, xhat_all[trial, :, idz], color="0.8", linewidth=0.5)
+
+        ax.set_ylabel(state_labels[idz])
+        ax.grid(True)
+        ax.legend()
+
+    for ax in axes[-2:]:
+        ax.set_xlabel(r"Measurement Index $k$")
+
+    fig.suptitle(r"RLS Sample Mean State Estimates and $\pm 3 \sigma$ Bounds")
+    fig.tight_layout()
 
     description = dedent("""
-        Write your answer here.
-        Write your answer here.
+        The plots show the sample mean state estimates μₖ across all 50 trials
+        together with ±3σ envelopes derived from the RLS covariance Pₖ.
+
+        Only the z-related states (z₀ and ż₀) change significantly with k,
+        because the measurements depend only on z. The x, y, ẋ and ẏ
+        components remain essentially fixed at their prior means and covariances,
+        reflecting the fact that they are unobservable in this simplified setup.
+
+        For the observable components, the behavior mirrors the batch least squares
+        results from Problem 1: as k increases, the mean converges toward the true
+        value and the ±3σ bounds shrink. This happens because recursive least
+        squares is algebraically equivalent to batch least squares for a linear
+        Gaussian model: RLS simply builds the same normal-equation solution one
+        measurement at a time, using the prior (x̂₀, P₀) as an initial condition.
+        Differences between the RLS and batch plots at small k come from the way
+        the prior is incorporated and from finite-precision numerical effects,
+        but they converge as more data are assimilated.
     """).strip()
 
     return fig, description
@@ -306,11 +482,46 @@ def plot_and_describe_sample_mean():
 
 # REQUIRED --- Problem 2c
 def plot_and_describe_time():
-    fig = plt.figure()
+    # Problem 1 BLLS timings
+    results_BLLS = _get_results_BLLS()
+    avg_time_blls = results_BLLS["avg_time_per_k"] # (n_meas,)
+
+    # Problem 2 RLS timings
+    results_RLS = _get_results_RLS()
+    avg_time_rls = results_RLS["avg_time_per_update"] # (n_meas,)
+
+    n_meas = avg_time_blls.shape[0]
+    k_vec = np.arange(1, n_meas + 1)
+
+    fig, ax = plt.subplots()
+
+    # convert to microseconds
+    ax.plot(k_vec, avg_time_blls * 1e6, label="Batch LS (per k)", linewidth=2)
+    ax.plot(k_vec, avg_time_rls * 1e6, label="RLS (per update)", linewidth=2)
+
+    ax.set_xlabel(r"Number of Measurements Used ($k$)")
+    ax.set_ylabel("Average Execution Time [µs]")
+    ax.set_title("Execution Time [µs] vs. Number of Measurements\nComparison: Batch LS vs RLS")
+    ax.grid(True)
+    ax.legend()
 
     description = dedent("""
-        Write your answer here.
-        Write your answer here.
+        The batch least squares implementation recomputes the normal equations
+        using all k measurements at each step. As a result, its computational
+        cost per update grows roughly linearly with k, and the measured average
+        execution time increases as more measurements are included.
+
+        In contrast, the recursive least squares implementation updates the
+        estimate and covariance using only the new measurement and the previous
+        state (x̂ₖ₋₁, Pₖ₋₁). Each RLS update has essentially constant cost
+        O(n²) in the state dimension n and does not depend on k, so the
+        measured execution time per update remains nearly flat as k increases.
+
+        For this problem the absolute differences in timing are small because
+        both the measurement dimension and state dimension are modest. However,
+        the scaling behavior is fundamentally different: for long data records
+        or higher-dimensional states, RLS is significantly more efficient than
+        repeatedly solving the batch least squares problem from scratch.
     """).strip()
 
     return fig, description

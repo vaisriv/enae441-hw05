@@ -1,2 +1,16 @@
-Write your answer here.
-Write your answer here.
+The batch least squares implementation recomputes the normal equations
+using all k measurements at each step. As a result, its computational
+cost per update grows roughly linearly with k, and the measured average
+execution time increases as more measurements are included.
+
+In contrast, the recursive least squares implementation updates the
+estimate and covariance using only the new measurement and the previous
+state (x̂ₖ₋₁, Pₖ₋₁). Each RLS update has essentially constant cost
+O(n²) in the state dimension n and does not depend on k, so the
+measured execution time per update remains nearly flat as k increases.
+
+For this problem the absolute differences in timing are small because
+both the measurement dimension and state dimension are modest. However,
+the scaling behavior is fundamentally different: for long data records
+or higher-dimensional states, RLS is significantly more efficient than
+repeatedly solving the batch least squares problem from scratch.

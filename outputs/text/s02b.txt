@@ -1,2 +1,17 @@
-Write your answer here.
-Write your answer here.
+The plots show the sample mean state estimates μₖ across all 50 trials
+together with ±3σ envelopes derived from the RLS covariance Pₖ.
+
+Only the z-related states (z₀ and ż₀) change significantly with k,
+because the measurements depend only on z. The x, y, ẋ and ẏ
+components remain essentially fixed at their prior means and covariances,
+reflecting the fact that they are unobservable in this simplified setup.
+
+For the observable components, the behavior mirrors the batch least squares
+results from Problem 1: as k increases, the mean converges toward the true
+value and the ±3σ bounds shrink. This happens because recursive least
+squares is algebraically equivalent to batch least squares for a linear
+Gaussian model: RLS simply builds the same normal-equation solution one
+measurement at a time, using the prior (x̂₀, P₀) as an initial condition.
+Differences between the RLS and batch plots at small k come from the way
+the prior is incorporated and from finite-precision numerical effects,
+but they converge as more data are assimilated.
